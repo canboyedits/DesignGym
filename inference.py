@@ -22,12 +22,19 @@ MODEL_NAME = os.getenv("MODEL_NAME", "meta-llama/Llama-3.1-8B-Instruct:scaleway"
 LOCAL_IMAGE_NAME = os.getenv("LOCAL_IMAGE_NAME")
 
 BASE_URL = os.getenv("OPENENV_BASE_URL", "http://localhost:8000")
-TASK_NAME = os.getenv("DESIGNGYM_TASK", "poster_basic_v1")
 BENCHMARK = os.getenv("DESIGNGYM_BENCHMARK", "designgym")
 MAX_STEPS = int(os.getenv("DESIGNGYM_MAX_STEPS", "8"))
 TEMPERATURE = float(os.getenv("TEMPERATURE", "0.0"))
 MAX_TOKENS = int(os.getenv("MAX_TOKENS", "24"))
 SUCCESS_SCORE_THRESHOLD = float(os.getenv("SUCCESS_SCORE_THRESHOLD", "0.55"))
+
+ALL_TASKS = [
+    "poster_basic_v1",
+    "editorial_cover_v1",
+    "dense_flyer_v1",
+]
+TASK_OVERRIDE = os.getenv("DESIGNGYM_TASK")
+TASKS_TO_RUN = [TASK_OVERRIDE] if TASK_OVERRIDE else ALL_TASKS
 
 
 SYSTEM_PROMPT = """
@@ -308,7 +315,6 @@ def candidate_actions(
     recent_actions: List[str],
 ) -> List[DesignGymAction]:
     worst = set(obs.worst_metrics or [])
-    metrics = dict(obs.metrics or {})
     kind = task_kind(obs.task_id)
     phase = phase_for(step, obs)
 
@@ -490,8 +496,7 @@ def get_model_action_sync(
         return best_local
 
 
-async def main() -> None:
-    client = OpenAI(base_url=API_BASE_URL, api_key=HF_TOKEN) if HF_TOKEN else None
+async def run_task(client: Optional[OpenAI], task_name: str) -> None:
     env = await DesignGymEnv.from_docker_image(LOCAL_IMAGE_NAME) if LOCAL_IMAGE_NAME else DesignGymEnv(base_url=BASE_URL)
 
     rewards: List[float] = []
@@ -501,11 +506,11 @@ async def main() -> None:
     score = 0.0
     success = False
 
-    log_start(task=TASK_NAME, env=BENCHMARK, model=MODEL_NAME)
+    log_start(task=task_name, env=BENCHMARK, model=MODEL_NAME)
 
     try:
         async with env:
-            result = await env.reset(task_id=TASK_NAME, seed=0)
+            result = await env.reset(task_id=task_name, seed=0)
             obs = result.observation
 
             for step in range(1, min(MAX_STEPS, obs.max_steps) + 1):
@@ -557,6 +562,13 @@ async def main() -> None:
         except Exception:
             pass
         log_end(success=success, steps=steps_taken, score=score, rewards=rewards)
+
+
+async def main() -> None:
+    client = OpenAI(base_url=API_BASE_URL, api_key=HF_TOKEN) if HF_TOKEN else None
+
+    for task_name in TASKS_TO_RUN:
+        await run_task(client, task_name)
 
 
 if __name__ == "__main__":
