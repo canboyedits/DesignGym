@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>DesignGym 2.0 Demo</title>
+  <link rel="stylesheet" href="/web/style.css" />
+</head>
+<body>
+  <main>
+    <section class="panel">
+      <h1>DesignGym 2.0</h1>
+      <p>Long-horizon instruction-following layout design environment.</p>
+
+      <label>Task</label>
+      <select id="task">
+        <option value="poster_basic_v1">poster_basic_v1</option>
+        <option value="editorial_cover_v1">editorial_cover_v1</option>
+        <option value="dense_flyer_v1">dense_flyer_v1</option>
+      </select>
+
+      <div class="buttons">
+        <button id="reset">Reset</button>
+        <button id="step">Heuristic Step</button>
+        <button id="finalize">Finalize</button>
+      </div>
+
+      <pre id="brief"></pre>
+      <pre id="metrics"></pre>
+    </section>
+
+    <section class="canvas-panel">
+      <svg id="canvas" viewBox="0 0 800 1000"></svg>
+      <pre id="history"></pre>
+    </section>
+  </main>
+
+  <script src="/web/app.js"></script>
+</body>
+</html>

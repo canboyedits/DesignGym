@@ -17,6 +17,15 @@ try:
 except Exception:  # pragma: no cover
     from models import DesignGymAction, DesignGymObservation, DesignGymState
 
+try:
+    from .briefs import choose_brief
+    from .phases import get_phase, allowed_actions_for_phase, phase_score_for_action
+    from .rewards import instruction_score, critic_feedback, compose_reward
+except Exception:  # pragma: no cover
+    from server.briefs import choose_brief
+    from server.phases import get_phase, allowed_actions_for_phase, phase_score_for_action
+    from server.rewards import instruction_score, critic_feedback, compose_reward
+
 
 EPS = 1e-9
 
@@ -371,6 +380,53 @@ class DesignGymEnvironment(Environment):
         if "templates" not in self._task_spec:
             self._task_spec = copy.deepcopy(TASKS.get(task_id, TASKS["poster_basic_v1"]))
 
+    def _refresh_round2_context(self, phase_score_value: float = 1.0) -> None:
+        phase = get_phase(
+            step_count=int(self._state.step_count),
+            max_steps=int(self._state.max_steps),
+            current_score=float(self._state.current_score),
+            done=bool(self._state.done),
+        )
+        instr = instruction_score(self._state.elements, self._state.brief)
+
+        self._state.phase = phase
+        self._state.allowed_actions = allowed_actions_for_phase(phase)
+        self._state.instruction_score = instr
+        self._state.phase_score = phase_score_value
+        self._state.critic_feedback = critic_feedback(
+            self._state.metrics,
+            self._state.elements,
+            self._state.brief,
+            instr,
+            phase,
+        )
+
+        memory = dict(self._state.memory or {})
+        phase_history = list(memory.get("phase_history", []))
+        if not phase_history or phase_history[-1] != phase:
+            phase_history.append(phase)
+        memory["phase_history"] = phase_history[-8:]
+        memory["last_phase"] = phase
+        self._state.memory = memory
+
+    def _early_finalize_penalty(self, action: DesignGymAction) -> float:
+        if action.action_type != "finalize":
+            return 0.0
+
+        too_early = self._state.step_count < max(3, int(0.70 * self._state.max_steps))
+        not_ready = self._state.current_score < 0.75 or self._state.instruction_score < 0.65
+
+        return 0.20 if too_early and not_ready else 0.0
+
+    def _final_success_bonus(self, action: DesignGymAction) -> float:
+        if action.action_type != "finalize":
+            return 0.0
+
+        if self._state.current_score >= 0.75 and self._state.instruction_score >= 0.65:
+            return 1.0
+
+        return 0.0
+
     def reset(
         self,
         seed: Optional[int] = None,
@@ -392,6 +448,7 @@ class DesignGymEnvironment(Environment):
 
         elements = self._build_initial_elements(self._task_spec, initial_template)
         elements = self._apply_seeded_imperfections(elements, rng)
+        brief = choose_brief(selected_task, local_seed)
 
         self._state = DesignGymState(
             episode_id=episode_id or str(uuid.uuid4()),
@@ -422,6 +479,18 @@ class DesignGymEnvironment(Environment):
             metric_deltas={},
             elements=elements,
             action_history=[],
+            brief=brief,
+            phase="structure",
+            allowed_actions=[],
+            instruction_score=0.0,
+            phase_score=1.0,
+            reward_components={},
+            memory={
+                "selected_template": initial_template,
+                "phase_history": ["structure"],
+                "brief_id": brief.get("brief_id"),
+            },
+            critic_feedback=[],
         )
 
         score_info = self._score_layout(self._state.elements)
@@ -431,6 +500,8 @@ class DesignGymEnvironment(Environment):
         self._state.current_utility = float(score_info["utility"])
         self._state.current_score = float(score_info["score"])
         self._state.best_score_so_far = float(score_info["utility"])
+
+        self._refresh_round2_context(phase_score_value=1.0)
 
         return self._observation(message=f"Ready: {selected_task}")
 
@@ -450,10 +521,30 @@ class DesignGymEnvironment(Environment):
         proposed_elements = _deepcopy_elements(self._state.elements)
 
         if action.action_type == "finalize":
+            phase_value = phase_score_for_action(action.action_type, self._state.phase)
+            early_penalty = self._early_finalize_penalty(action)
+            final_bonus = self._final_success_bonus(action)
+
+            components = compose_reward(
+                layout_delta=0.0,
+                best_score_delta=0.0,
+                instruction_progress=0.0,
+                phase_correctness=phase_value,
+                validity_score=1.0,
+                final_success_bonus=final_bonus,
+                no_op_penalty=0.0,
+                oscillation_penalty=0.0,
+                early_finalize_penalty=early_penalty,
+            )
+
             self._state.done = True
-            self._state.last_reward = 0.0
+            self._state.last_reward = float(components["total"])
+            self._state.total_reward = _clamp(self._state.total_reward + self._state.last_reward, 0.0, 1.0)
             self._state.last_action_error = None
             self._state.action_history.append(canonical_action)
+            self._state.reward_components = components
+            self._refresh_round2_context(phase_score_value=phase_value)
+
             return self._observation(message="Layout finalized.")
 
         ok, error = self._apply_action(proposed_elements, action)
@@ -503,16 +594,36 @@ class DesignGymEnvironment(Environment):
         oscillation_penalty = self._oscillation_penalty(action)
         waste_penalty = 0.03 if step_gain <= 1e-6 and best_gain <= 1e-6 and frontier_gain <= 1e-6 else 0.0
 
-        reward = _clamp(
-            0.45 * step_gain
-            + 0.20 * best_gain
-            + 0.20 * frontier_gain
-            + 0.15 * pref_rank
-            - oscillation_penalty
-            - waste_penalty,
-            0.0,
-            1.0,
+        prev_instruction = float(self._state.instruction_score or 0.0)
+        new_instruction = instruction_score(proposed_elements, self._state.brief)
+        instruction_progress = max(0.0, new_instruction - prev_instruction)
+
+        current_phase = get_phase(
+            step_count=int(self._state.step_count),
+            max_steps=int(self._state.max_steps),
+            current_score=curr_score,
+            done=False,
         )
+        phase_value = phase_score_for_action(action.action_type, current_phase)
+
+        validity_score = 1.0
+        early_finalize_penalty = 0.0
+        final_success_bonus = 0.0
+        no_op_penalty = waste_penalty
+
+        components = compose_reward(
+            layout_delta=step_gain,
+            best_score_delta=best_gain,
+            instruction_progress=instruction_progress,
+            phase_correctness=phase_value,
+            validity_score=validity_score,
+            final_success_bonus=final_success_bonus,
+            no_op_penalty=no_op_penalty,
+            oscillation_penalty=oscillation_penalty,
+            early_finalize_penalty=early_finalize_penalty,
+        )
+
+        reward = float(components["total"])
 
         if step_gain <= 1e-6 and best_gain <= 1e-6:
             self._state.no_progress_steps += 1
@@ -532,9 +643,12 @@ class DesignGymEnvironment(Environment):
         efficiency = max(0.70, 1.0 - 0.05 * self._state.invalid_actions - 0.02 * self._state.no_progress_steps)
         self._state.current_score = _clamp(curr_utility * efficiency, 0.0, 1.0)
 
+        self._state.reward_components = components
         self._state.total_reward = _clamp(self._state.total_reward + reward, 0.0, 1.0)
         self._state.last_reward = reward
         self._state.last_action_error = None
+
+        self._refresh_round2_context(phase_score_value=phase_value)
 
         if self._state.step_count >= self._state.max_steps:
             self._state.done = True
@@ -665,6 +779,14 @@ class DesignGymEnvironment(Environment):
             element_blame={k: round(float(v), 4) for k, v in blame.items()},
             constraint_warnings=warnings,
             suggested_edits=self._suggested_edits(worst, focus),
+            brief=self._state.brief,
+            phase=self._state.phase,
+            allowed_actions=self._state.allowed_actions,
+            instruction_score=round(float(self._state.instruction_score), 4),
+            phase_score=round(float(self._state.phase_score), 4),
+            reward_components={k: round(float(v), 4) for k, v in self._state.reward_components.items()},
+            memory=self._state.memory,
+            critic_feedback=self._state.critic_feedback,
         )
 
     def _apply_action(self, elements: List[Dict[str, object]], action: DesignGymAction) -> Tuple[bool, Optional[str]]:

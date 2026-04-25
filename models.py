@@ -31,7 +31,6 @@ class DesignGymAction(BaseModel):
             separators=(",", ":"),
         )
 
-
 class DesignGymObservation(BaseModel):
     message: str = ""
     task_id: str = ""
@@ -42,8 +41,10 @@ class DesignGymObservation(BaseModel):
     current_score: float = 0.0
     best_score_so_far: float = 0.0
     last_action_error: Optional[str] = None
+
     legal_actions: List[str] = Field(default_factory=list)
     layout_summary: str = ""
+
     metrics: Dict[str, float] = Field(default_factory=dict)
     metric_deltas: Dict[str, float] = Field(default_factory=dict)
     worst_metrics: List[str] = Field(default_factory=list)
@@ -51,6 +52,16 @@ class DesignGymObservation(BaseModel):
     element_blame: Dict[str, float] = Field(default_factory=dict)
     constraint_warnings: List[str] = Field(default_factory=list)
     suggested_edits: List[str] = Field(default_factory=list)
+
+    # DesignGym 2.0 fields
+    brief: Dict[str, Any] = Field(default_factory=dict)
+    phase: str = "structure"
+    allowed_actions: List[str] = Field(default_factory=list)
+    instruction_score: float = 0.0
+    phase_score: float = 0.0
+    reward_components: Dict[str, float] = Field(default_factory=dict)
+    memory: Dict[str, Any] = Field(default_factory=dict)
+    critic_feedback: List[str] = Field(default_factory=list)
 
 
 class DesignGymState(BaseModel):
@@ -61,18 +72,33 @@ class DesignGymState(BaseModel):
     instance_id: str = ""
     max_steps: int = 0
     done: bool = False
+
     total_reward: float = 0.0
     last_reward: float = 0.0
     current_score: float = 0.0
     current_utility: float = 0.0
     best_score_so_far: float = 0.0
+
     last_action_error: Optional[str] = None
     invalid_actions: int = 0
     no_progress_steps: int = 0
+
     canvas: Dict[str, Any] = Field(default_factory=dict)
     constraints: Dict[str, Any] = Field(default_factory=dict)
+
     metrics: Dict[str, float] = Field(default_factory=dict)
     previous_metrics: Dict[str, float] = Field(default_factory=dict)
     metric_deltas: Dict[str, float] = Field(default_factory=dict)
+
     elements: List[Dict[str, Any]] = Field(default_factory=list)
     action_history: List[str] = Field(default_factory=list)
+
+    # DesignGym 2.0 fields
+    brief: Dict[str, Any] = Field(default_factory=dict)
+    phase: str = "structure"
+    allowed_actions: List[str] = Field(default_factory=list)
+    instruction_score: float = 0.0
+    phase_score: float = 0.0
+    reward_components: Dict[str, float] = Field(default_factory=dict)
+    memory: Dict[str, Any] = Field(default_factory=dict)
+    critic_feedback: List[str] = Field(default_factory=list)

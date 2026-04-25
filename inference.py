@@ -18,7 +18,10 @@ except Exception:
 
 HF_TOKEN = os.getenv("HF_TOKEN")
 API_BASE_URL = os.getenv("API_BASE_URL", "https://router.huggingface.co/v1")
-MODEL_NAME = os.getenv("MODEL_NAME", "meta-llama/Llama-3.1-8B-Instruct:scaleway")
+# MODEL_NAME = os.getenv("MODEL_NAME", "meta-llama/Llama-3.1-8B-Instruct:scaleway")
+
+MODEL_NAME = os.getenv("MODEL_NAME", "Qwen/Qwen2.5-0.5B-Instruct")
+
 LOCAL_IMAGE_NAME = os.getenv("LOCAL_IMAGE_NAME")
 
 BASE_URL = os.getenv("OPENENV_BASE_URL", "http://localhost:8000")
@@ -38,7 +41,7 @@ TASKS_TO_RUN = [TASK_OVERRIDE] if TASK_OVERRIDE else ALL_TASKS
 
 
 SYSTEM_PROMPT = """
-You are choosing one action for a layout optimization environment.
+You are choosing one action for a long-horizon layout design environment.
 
 Return exactly one minified JSON object:
 {"choice": <integer>}
@@ -47,11 +50,12 @@ Rules:
 - Choose exactly one candidate index.
 - Do not explain.
 - Do not output markdown.
-- Prefer actions that improve the weakest metrics first.
+- Prefer actions that satisfy the design brief.
+- Prefer actions that match the current design phase.
+- Improve weak metrics without ignoring the brief.
 - Avoid repeating low-gain actions.
-- Do not choose finalize unless it is clearly appropriate late in the episode.
+- Do not choose finalize unless the layout score and instruction score are both high late in the episode.
 """.strip()
-
 
 def log_start(task: str, env: str, model: str) -> None:
     print(f"[START] task={task} env={env} model={model}", flush=True)
@@ -430,6 +434,13 @@ def build_choice_prompt(
         Step: {step}
         Max steps: {obs.max_steps}
         Phase: {phase}
+        Brief: {json.dumps(getattr(obs, "brief", {}), sort_keys=True)}
+        Environment phase: {getattr(obs, "phase", phase)}
+        Phase allowed actions: {json.dumps(getattr(obs, "allowed_actions", []))}
+        Instruction score: {getattr(obs, "instruction_score", 0.0):.4f}
+        Phase score: {getattr(obs, "phase_score", 0.0):.4f}
+        Reward components: {json.dumps(getattr(obs, "reward_components", {}), sort_keys=True)}
+        Critic feedback: {json.dumps(getattr(obs, "critic_feedback", []))}
         Current score: {obs.current_score:.4f}
         Best score so far: {obs.best_score_so_far:.4f}
         Worst metrics: {json.dumps(obs.worst_metrics)}

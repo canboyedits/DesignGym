@@ -1,0 +1,29 @@
+[START] task=poster_basic_v1 env=designgym model=Qwen/Qwen2.5-0.5B-Instruct
+[STEP] step=1 action={"action_type":"resize","anchor":"center","dh":0.02,"dw":0.03,"dx":0.0,"dy":0.0,"element_id":"hero_image","element_ids":[],"grid":0,"strength":0.0} reward=0.13 done=false error=null
+[STEP] step=2 action={"action_type":"resize","anchor":"center","dh":0.02,"dw":0.03,"dx":0.0,"dy":0.0,"element_id":"hero_image","element_ids":[],"grid":0,"strength":0.0} reward=0.18 done=false error=null
+[STEP] step=3 action={"action_type":"promote","anchor":"center","dh":0.0,"dw":0.0,"dx":0.0,"dy":0.0,"element_id":"title","element_ids":[],"grid":0,"strength":0.04} reward=0.25 done=false error=null
+[STEP] step=4 action={"action_type":"resize","anchor":"center","dh":0.01,"dw":0.02,"dx":0.0,"dy":0.0,"element_id":"hero_image","element_ids":[],"grid":0,"strength":0.0} reward=0.25 done=false error=null
+[STEP] step=5 action={"action_type":"resize","anchor":"center","dh":0.02,"dw":0.03,"dx":0.0,"dy":0.0,"element_id":"hero_image","element_ids":[],"grid":0,"strength":0.0} reward=0.26 done=false error=null
+[STEP] step=6 action={"action_type":"reflow_group","anchor":"center","dh":0.0,"dw":0.0,"dx":0.0,"dy":0.0,"element_ids":[],"grid":0,"group_id":"headline","pattern":"stack","strength":0.0} reward=0.12 done=false error=null
+[STEP] step=7 action={"action_type":"finalize","anchor":"center","dh":0.0,"dw":0.0,"dx":0.0,"dy":0.0,"element_ids":[],"grid":0,"strength":0.0} reward=0.10 done=true error=null
+[END] success=true steps=7 score=0.741 rewards=0.13,0.18,0.25,0.25,0.26,0.12,0.10
+[START] task=editorial_cover_v1 env=designgym model=Qwen/Qwen2.5-0.5B-Instruct
+[STEP] step=1 action={"action_type":"resize","anchor":"center","dh":0.02,"dw":0.03,"dx":0.0,"dy":0.0,"element_id":"hero_image","element_ids":[],"grid":0,"strength":0.0} reward=0.13 done=false error=null
+[STEP] step=2 action={"action_type":"resize","anchor":"center","dh":0.02,"dw":0.03,"dx":0.0,"dy":0.0,"element_id":"hero_image","element_ids":[],"grid":0,"strength":0.0} reward=0.17 done=false error=null
+[STEP] step=3 action={"action_type":"promote","anchor":"center","dh":0.0,"dw":0.0,"dx":0.0,"dy":0.0,"element_id":"headline_1","element_ids":[],"grid":0,"strength":0.04} reward=0.18 done=false error=null
+[STEP] step=4 action={"action_type":"distribute","anchor":"center","axis":"y","dh":0.0,"dw":0.0,"dx":0.0,"dy":0.0,"element_ids":["masthead","headline_1","headline_2"],"grid":0,"strength":0.0} reward=0.25 done=false error=null
+[STEP] step=5 action={"action_type":"resize","anchor":"center","dh":0.02,"dw":0.03,"dx":0.0,"dy":0.0,"element_id":"hero_image","element_ids":[],"grid":0,"strength":0.0} reward=0.25 done=false error=null
+[STEP] step=6 action={"action_type":"resize","anchor":"center","dh":0.01,"dw":0.02,"dx":0.0,"dy":0.0,"element_id":"hero_image","element_ids":[],"grid":0,"strength":0.0} reward=0.25 done=false error=null
+[STEP] step=7 action={"action_type":"distribute","anchor":"center","axis":"y","dh":0.0,"dw":0.0,"dx":0.0,"dy":0.0,"element_ids":["masthead","headline_1","headline_2"],"grid":0,"strength":0.0} reward=0.22 done=false error=null
+[STEP] step=8 action={"action_type":"resize","anchor":"center","dh":0.02,"dw":0.03,"dx":0.0,"dy":0.0,"element_id":"hero_image","element_ids":[],"grid":0,"strength":0.0} reward=0.18 done=false error=null
+[END] success=true steps=8 score=0.795 rewards=0.13,0.17,0.18,0.25,0.25,0.25,0.22,0.18
+[START] task=dense_flyer_v1 env=designgym model=Qwen/Qwen2.5-0.5B-Instruct
+[STEP] step=1 action={"action_type":"reflow_group","anchor":"center","dh":0.0,"dw":0.0,"dx":0.0,"dy":0.0,"element_ids":[],"grid":0,"group_id":"support","pattern":"row","strength":0.0} reward=0.14 done=false error=null
+[STEP] step=2 action={"action_type":"promote","anchor":"center","dh":0.0,"dw":0.0,"dx":0.0,"dy":0.0,"element_id":"title","element_ids":[],"grid":0,"strength":0.04} reward=0.18 done=false error=null
+[STEP] step=3 action={"action_type":"resize","anchor":"center","dh":0.02,"dw":0.02,"dx":0.0,"dy":0.0,"element_id":"details","element_ids":[],"grid":0,"strength":0.0} reward=0.18 done=false error=null
+[STEP] step=4 action={"action_type":"reflow_group","anchor":"center","dh":0.0,"dw":0.0,"dx":0.0,"dy":0.0,"element_ids":[],"grid":0,"group_id":"support","pattern":"row","strength":0.0} reward=0.22 done=false error=null
+[STEP] step=5 action={"action_type":"promote","anchor":"center","dh":0.0,"dw":0.0,"dx":0.0,"dy":0.0,"element_id":"title","element_ids":[],"grid":0,"strength":0.04} reward=0.25 done=false error=null
+[STEP] step=6 action={"action_type":"resize","anchor":"center","dh":0.02,"dw":0.02,"dx":0.0,"dy":0.0,"element_id":"details","element_ids":[],"grid":0,"strength":0.0} reward=0.26 done=false error=null
+[STEP] step=7 action={"action_type":"resize","anchor":"center","dh":0.01,"dw":-0.02,"dx":0.0,"dy":0.0,"element_id":"details","element_ids":[],"grid":0,"strength":0.0} reward=0.25 done=false error=null
+[STEP] step=8 action={"action_type":"promote","anchor":"center","dh":0.0,"dw":0.0,"dx":0.0,"dy":0.0,"element_id":"title","element_ids":[],"grid":0,"strength":0.04} reward=0.26 done=false error=null
+[END] success=true steps=8 score=0.601 rewards=0.14,0.18,0.18,0.22,0.25,0.26,0.25,0.26
