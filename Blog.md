@@ -1,16 +1,3 @@
----
-title: Designgym Environment Server
-emoji: 📟
-colorFrom: blue
-colorTo: indigo
-sdk: docker
-pinned: false
-app_port: 8000
-base_path: /web
-tags:
-  - openenv
----
-
 # 🎨 DesignGym 2.0 — Teaching an LLM to Think Like a Designer
 
 > *What if a machine didn't just generate a layout — but learned how to improve one?*
@@ -480,4 +467,3 @@ The final vision: models that don't just generate designs — but **learn how to
 
 *Built for the OpenEnv Hackathon · India 2026*  
 *Math rendered with [KaTeX](https://katex.org/) / [MathJax](https://www.mathjax.org/)*
-
