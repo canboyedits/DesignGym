@@ -63,7 +63,7 @@ DesignGym proves this framework works for graphic design. The architecture is a 
 | Resource | Link |
 |---|---|
 | 🌍 **Environment (HF Space)** | [DesignGym Environment Server](https://huggingface.co/spaces/yashvyasop/DesignGym) |
-| 💻 **GitHub Repo** | [canboyedits/DesignGym](https://github.com/canboyedits/DesignGym) |
+| 💻 **GitHub Repo** | [canboyedits/DesignGym](https://github.com/canboyedits/DesignGym/tree/round2-designgym-2) |
 | 🧠 **SFT Trained Adapter** | [designgym2-sft-qwen05-lora](https://huggingface.co/yashvyasop/designgym2-sft-qwen05-lora) |
 | 📓 **GRPO Training Notebook** | [grpo_train_colab.ipynb](https://colab.research.google.com/drive/1jw1waO-bc0Mk3U7-RBbomsIGFBWvA0aW?usp=sharing) |
 | 📓 **SFT Training Notebook** | [SFT_training_script.ipynb](https://colab.research.google.com/drive/1ZtjQSen19Sdmx8FOXvM-nb_AFDSNM_1C?usp=sharing) |
