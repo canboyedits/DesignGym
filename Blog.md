@@ -16,6 +16,8 @@ Not a one-shot generator. Not a template-picker. An *agent* that looks at a layo
 
 That's what this project is. And it's bigger than posters.
 
+![DesignGym Architecture Overview](assets/DesignGym.png)
+
 ---
 
 ## 🔗 Project Links
@@ -101,6 +103,8 @@ $$L = \{b_1, b_2, \dots, b_n\}$$
 
 The state given to the agent includes: task ID, step count, current score, best score so far, instruction score, phase score, metric vector, weakest metrics, focus elements, action history, full geometry, and current phase. The agent can reason not just about *what* the layout looks like but *where it is* in the design process.
 
+![Layout Understanding](assets/layout_understanding.png)
+
 The RL loop:
 
 $$s_t \;\xrightarrow{\;a_t\;}\; s_{t+1},\; r_t$$
@@ -145,16 +149,7 @@ Each $g_k$ is an independent, interpretable aesthetic signal. Together they give
 
 ### 1. Overlap — *Do elements collide?*
 
-$$
-g_{\text{overlap}}(L)
-=
-\exp\!\left(
--\frac{\sum_{i \lt j} \mathrm{I}(b_i,b_j)}
-{\sum_i a_i + \epsilon}
-\right),
-\qquad
-a_i = w_i h_i
-$$
+$$g_{\text{overlap}}(L) = \exp\!\left(-\frac{\sum_{i<j} \mathrm{I}(b_i,b_j)}{\sum_i a_i + \epsilon}\right), \quad a_i = w_i h_i$$
 
 Exponential penalty for any intersection. Clean layouts score near 1.
 
@@ -279,6 +274,8 @@ Otherwise $\pi_{\text{finalize}} > 0$. This enforces long-horizon behavior and p
 Base Model  →  Heuristic Planner  →  SFT Model  →  GRPO Model
 ```
 
+![Optimization Process](assets/optimization_process.png)
+
 ### Why SFT First?
 
 The base model (Qwen 0.5B) understands design language but cannot speak the *environment's action format*. It says things like:
@@ -317,6 +314,8 @@ The learning story:
 
 $$\text{Language Model} \;\xrightarrow{\;\text{SFT}\;}\; \text{Action Model} \;\xrightarrow{\;\text{GRPO}\;}\; \text{Design Policy}$$
 
+![Training Pipeline](assets/training_pipeline.png)
+
 ---
 
 ## 📊 Results: Evidence of Learning
@@ -330,6 +329,12 @@ $$\text{Language Model} \;\xrightarrow{\;\text{SFT}\;}\; \text{Action Model} \;\
 The most important result is the jump from **0% to 100% valid actions**. That's the model crossing from "knows about design" to "can act in a design environment."
 
 GRPO then learns *which* valid actions are better — a harder problem that continues to improve with more training. The infrastructure and reward signal are proven.
+
+![Reward Curve](assets/reward_curve.png)
+*Reward over training steps — GRPO maintains validity while improving action quality*
+
+![Final Score Comparison](assets/final_score_comparison.png)
+*Final layout score across Base, SFT, and GRPO policies*
 
 ---
 
