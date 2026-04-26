@@ -145,7 +145,16 @@ Each $g_k$ is an independent, interpretable aesthetic signal. Together they give
 
 ### 1. Overlap — *Do elements collide?*
 
-$$g_{\text{overlap}}(L) = \exp\!\left(-\frac{\displaystyle\sum_{i<j} \mathrm{I}(b_i,b_j)}{\displaystyle\sum_i a_i + \epsilon}\right), \quad a_i = w_i h_i$$
+$$
+g_{\text{overlap}}(L)
+=
+\exp\!\left(
+-\frac{\sum_{i \lt j} \mathrm{I}(b_i,b_j)}
+{\sum_i a_i + \epsilon}
+\right),
+\qquad
+a_i = w_i h_i
+$$
 
 Exponential penalty for any intersection. Clean layouts score near 1.
 
