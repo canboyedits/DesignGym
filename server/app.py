@@ -252,11 +252,14 @@ def _summary_from_state(state, trajectory: List[Dict[str, Any]]) -> Dict[str, An
 
 
 def _record_step(step: int, action, obs, prev_score: float) -> Dict[str, Any]:
+    # last_reward lives on env.state, not on the observation
+    state_reward = getattr(getattr(DEMO_ENV, "state", None), "last_reward", None)
+    reward = state_reward if state_reward is not None else getattr(obs, "last_reward", 0.0)
     return {
         "step": step,
         "action_type": getattr(action, "action_type", None),
         "action": getattr(action, "canonical", lambda: str(action))(),
-        "reward": float(getattr(obs, "last_reward", 0.0) or 0.0),
+        "reward": float(reward or 0.0),
         "score": float(getattr(obs, "current_score", 0.0) or 0.0),
         "delta_score": float(getattr(obs, "current_score", 0.0) or 0.0) - prev_score,
         "instruction_score": float(getattr(obs, "instruction_score", 0.0) or 0.0),
