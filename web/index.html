@@ -74,6 +74,33 @@
     .sts.ok{border-style:solid;border-color:var(--gn);color:var(--gn)}
     .sts.err{border-style:solid;border-color:var(--rd);color:var(--rd)}
 
+    /* while-you-wait banner */
+    .wait-banner{display:none;margin:12px 24px;padding:14px 18px;background:linear-gradient(135deg,rgba(91,156,245,.08),rgba(212,98,154,.08));border:1px solid rgba(91,156,245,.25);border-radius:12px;animation:fadeIn .3s ease}
+    .wait-banner.show{display:block}
+    .wait-banner .wb-hd{font-size:13px;font-weight:600;margin-bottom:6px;color:var(--tx)}
+    .wait-banner .wb-timer{font-family:var(--fm);font-size:22px;font-weight:600;color:var(--ac);margin:6px 0}
+    .wait-banner .wb-links{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
+    .wait-banner .wb-btn{display:inline-flex;align-items:center;gap:5px;padding:7px 14px;font-size:12px;font-weight:600;border-radius:8px;border:1px solid var(--bd2);background:var(--s2);color:var(--tx);cursor:pointer;transition:all .15s;text-decoration:none}
+    .wait-banner .wb-btn:hover{border-color:var(--ac);background:var(--s3);text-decoration:none}
+    .wait-banner .wb-sub{color:var(--mt);font-size:11px;margin-top:4px}
+    @keyframes fadeIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
+
+    /* quick-results teaser */
+    .teaser{margin:0 24px;padding:10px 16px;background:var(--s1);border:1px solid var(--bd);border-radius:8px;font-size:12px;color:var(--mt);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+    .teaser strong{color:var(--tx)}
+    .teaser .t-link{color:var(--ac);cursor:pointer;font-weight:600;text-decoration:underline}
+
+    /* mode toggle */
+    .mode-toggle{display:flex;flex-direction:column;gap:6px}
+    .mode-opt{display:flex;gap:8px;align-items:flex-start;padding:8px 10px;border:1px solid var(--bd2);border-radius:8px;background:var(--s2);cursor:pointer;transition:border-color .12s}
+    .mode-opt:hover{border-color:var(--ac)}.mode-opt input{margin-top:3px}
+    .mode-opt div{display:flex;flex-direction:column}.mode-opt strong{font-size:12px}.mode-opt .desc{color:var(--mt);font-size:10px;line-height:1.4}
+
+    /* source badge shown on cached results */
+    .src-badge{display:inline-block;font-size:10px;padding:3px 10px;border-radius:5px;font-weight:500;margin:6px 0}
+    .src-cached{background:rgba(91,156,245,.12);color:var(--ac)}
+    .src-live{background:rgba(61,214,140,.12);color:var(--gn)}
+
     /* loading spinner */
     @keyframes spin{to{transform:rotate(360deg)}}
     .spinner{display:inline-block;width:14px;height:14px;border:2px solid var(--bd2);border-top-color:var(--ac);border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:6px}
@@ -160,6 +187,23 @@
     <p class="hdr-sub">Watch the agent design — compare heuristic vs fine-tuned LoRA models in real time</p>
   </header>
 
+  <div class="teaser" id="teaser">
+    <span>&#9889;</span>
+    <span><strong>Tip:</strong> Episodes take ~30-60s on CPU. Pre-computed results are ready in the <span class="t-link" id="go-bench">Benchmark</span> tab, or read the <span class="t-link" id="go-blog">Blog</span> while you wait.</span>
+  </div>
+
+  <div class="wait-banner" id="wait-banner">
+    <div class="wb-hd">&#9203; Episode running on CPU...</div>
+    <div class="wb-timer" id="wb-timer">0s</div>
+    <div class="wb-sub">The model is running inference on CPU — each step takes a few seconds. Totally normal.</div>
+    <div class="wb-links">
+      <span class="wb-btn" id="wb-bench">&#9776; View Benchmark Results</span>
+      <a class="wb-btn" href="https://huggingface.co/spaces/yashvyasop/DesignGym/blob/main/Blog.md" target="_blank">&#128221; Read the Blog</a>
+      <span class="wb-btn" id="wb-about">&#9881; Project Links &amp; Notebooks</span>
+    </div>
+    <div class="wb-sub" style="margin-top:8px">Results will appear here when done — you can navigate away and come back.</div>
+  </div>
+
   <div class="bc" id="bc">
     <div class="dot dot-m" id="bd"></div>
     <div class="bc-info">
@@ -205,12 +249,30 @@
       </div>
       <span class="help-tip">Heuristic is the teacher that generated SFT training data. LLM is the student.</span>
 
+      <h2>Run Mode</h2>
+      <div class="mode-toggle">
+        <label class="mode-opt">
+          <input type="radio" name="runmode" value="cached" checked />
+          <div>
+            <strong>Cached Result</strong>
+            <span class="desc">Instant — shows pre-computed benchmark output (seed=0)</span>
+          </div>
+        </label>
+        <label class="mode-opt">
+          <input type="radio" name="runmode" value="live" />
+          <div>
+            <strong>Run Live</strong>
+            <span class="desc">Execute on server CPU (~1-1.5 min per LLM episode)</span>
+          </div>
+        </label>
+      </div>
+
       <h2>Run</h2>
       <div class="acts">
-        <button id="run" class="pri">Run Episode</button>
+        <button id="run" class="pri">Show Cached Result</button>
         <button id="rst" class="sec">Reset</button>
       </div>
-      <span class="help-tip">One episode = the agent takes ~7-10 actions to improve a layout from scratch</span>
+      <span class="help-tip">Cached = instant pre-computed results. Live = real model inference on CPU.</span>
       <div id="sts" class="sts">Idle. Pick a task and click Run.</div>
     </div>
 
@@ -395,23 +457,33 @@
 
 <script>
 (function(){
-  /* ── Safari compat: no ?. chaining in older Safari, use explicit checks ── */
+  /* ── Safari compat: ES5 only, no ?. or ?? or => ── */
   var $ = function(id){ return document.getElementById(id); };
   var fmt = function(n,d){ d=d||3; return (n==null||isNaN(+n))?'—':(+n).toFixed(d); };
+
+  /* ── Cached benchmark results (seed=0, pre-computed on MPS M1) ── */
+  var CACHED = {"heuristic:poster_basic_v1":{"summary":{"final_score":0.7697,"instruction_score":0.4988,"steps_taken":7,"total_reward":1.318,"wall_time_sec":0.0},"trajectory":[{"step":1,"action":"resize","reward":0.1256,"score":0.7257,"policy":"heuristic"},{"step":2,"action":"resize","reward":0.1792,"score":0.7361,"policy":"heuristic"},{"step":3,"action":"resize","reward":0.2552,"score":0.7491,"policy":"heuristic"},{"step":4,"action":"resize","reward":0.255,"score":0.7616,"policy":"heuristic"},{"step":5,"action":"resize","reward":0.2542,"score":0.772,"policy":"heuristic"},{"step":6,"action":"reflow_group","reward":0.1225,"score":0.7543,"policy":"heuristic"},{"step":7,"action":"reflow_group","reward":0.1263,"score":0.7697,"policy":"heuristic"}],"final_state":{"elements":[{"id":"title","bbox":[0.1138,0.0903,0.5,0.12],"role":"title"},{"id":"subtitle","bbox":[0.1138,0.2304,0.44,0.08],"role":"subtitle"},{"id":"hero_image","bbox":[0.1455,0.2862,0.734,0.4588],"role":"image"},{"id":"cta","bbox":[0.0764,0.7521,0.3,0.1],"role":"cta"},{"id":"logo","bbox":[0.7191,0.1033,0.14,0.14],"role":"logo"},{"id":"badge","bbox":[0.6963,0.6902,0.2,0.14],"role":"badge"}]}},"heuristic:editorial_cover_v1":{"summary":{"final_score":0.7659,"instruction_score":0.5471,"steps_taken":9,"total_reward":1.558,"wall_time_sec":0.0},"trajectory":[{"step":1,"action":"resize","reward":0.1287,"score":0.8052,"policy":"heuristic"},{"step":2,"action":"resize","reward":0.175,"score":0.7825,"policy":"heuristic"},{"step":3,"action":"resize","reward":0.1752,"score":0.7832,"policy":"heuristic"},{"step":4,"action":"resize","reward":0.2507,"score":0.7859,"policy":"heuristic"},{"step":5,"action":"reflow_group","reward":0.2634,"score":0.7659,"policy":"heuristic"},{"step":6,"action":"reflow_group","reward":0.2539,"score":0.7815,"policy":"heuristic"},{"step":7,"action":"reflow_group","reward":0.0925,"score":0.7659,"policy":"heuristic"},{"step":8,"action":"reflow_group","reward":0.1264,"score":0.7815,"policy":"heuristic"},{"step":9,"action":"reflow_group","reward":0.0925,"score":0.7659,"policy":"heuristic"}],"final_state":{"elements":[{"id":"masthead","bbox":[0.1124,0.0693,0.56,0.1],"role":"title"},{"id":"hero_image","bbox":[0.0771,0.1713,0.8,0.46],"role":"image"},{"id":"headline_1","bbox":[0.1204,0.6266,0.54,0.1],"role":"title"},{"id":"headline_2","bbox":[0.1204,0.7548,0.46,0.08],"role":"subtitle"},{"id":"headline_3","bbox":[0.1204,0.863,0.4,0.06],"role":"subtitle"},{"id":"teaser","bbox":[0.7347,0.6902,0.16,0.12],"role":"badge"},{"id":"barcode","bbox":[0.7721,0.88,0.12,0.08],"role":"caption"},{"id":"logo","bbox":[0.1043,0.871,0.12,0.08],"role":"logo"}]}},"heuristic:dense_flyer_v1":{"summary":{"final_score":0.6547,"instruction_score":0.6301,"steps_taken":10,"total_reward":1.901,"wall_time_sec":0.0},"trajectory":[{"step":1,"action":"resize","reward":0.1253,"score":0.5824,"policy":"heuristic"},{"step":2,"action":"resize","reward":0.1906,"score":0.6214,"policy":"heuristic"},{"step":3,"action":"resize","reward":0.1759,"score":0.6238,"policy":"heuristic"},{"step":4,"action":"resize","reward":0.1768,"score":0.6263,"policy":"heuristic"},{"step":5,"action":"resize","reward":0.251,"score":0.6272,"policy":"heuristic"},{"step":6,"action":"resize","reward":0.2506,"score":0.5801,"policy":"heuristic"},{"step":7,"action":"resize","reward":0.264,"score":0.6315,"policy":"heuristic"},{"step":8,"action":"resize","reward":0.1714,"score":0.6405,"policy":"heuristic"},{"step":9,"action":"resize","reward":0.1708,"score":0.6485,"policy":"heuristic"},{"step":10,"action":"resize","reward":0.125,"score":0.6547,"policy":"heuristic"}],"final_state":{"elements":[{"id":"title","bbox":[0.091,0.0883,0.56,0.1],"role":"title"},{"id":"image_left","bbox":[0.0975,0.2323,0.264,0.22],"role":"image"},{"id":"image_right","bbox":[0.4204,0.257,0.264,0.22],"role":"image"},{"id":"price_badge","bbox":[0.7491,0.2337,0.16,0.12],"role":"badge"},{"id":"cta","bbox":[0.6593,0.4027,0.2,0.1],"role":"cta"},{"id":"details","bbox":[0.0731,0.4201,0.72,0.24],"role":"body"},{"id":"caption_1","bbox":[0.093,0.7082,0.22,0.1],"role":"caption"},{"id":"caption_2","bbox":[0.3838,0.722,0.22,0.1],"role":"caption"},{"id":"sponsor_strip","bbox":[0.1131,0.89,0.78,0.07],"role":"caption"}]}},"base:poster_basic_v1":{"summary":{"final_score":0.7443,"instruction_score":0.5041,"steps_taken":7,"total_reward":1.425,"wall_time_sec":9.9},"trajectory":[{"step":1,"action":"resize","reward":0.1256,"score":0.7257,"policy":"local_base"},{"step":2,"action":"resize","reward":0.1792,"score":0.7361,"policy":"local_base"},{"step":3,"action":"reflow_group","reward":0.25,"score":0.7206,"policy":"local_base"},{"step":4,"action":"align","reward":0.2537,"score":0.7353,"policy":"local_base"},{"step":5,"action":"promote","reward":0.2511,"score":0.7385,"policy":"local_base"},{"step":6,"action":"move","reward":0.2414,"score":0.7402,"policy":"local_base"},{"step":7,"action":"resize","reward":0.1244,"score":0.7443,"policy":"local_base"}],"final_state":{"elements":[{"id":"title","bbox":[0.0938,0.0803,0.54,0.14],"role":"title"},{"id":"subtitle","bbox":[0.1138,0.2304,0.44,0.08],"role":"subtitle"},{"id":"hero_image","bbox":[0.1905,0.3012,0.654,0.4088],"role":"image"},{"id":"cta","bbox":[0.0764,0.7521,0.3,0.1],"role":"cta"},{"id":"logo","bbox":[0.7191,0.1033,0.14,0.14],"role":"logo"},{"id":"badge","bbox":[0.6963,0.6902,0.2,0.14],"role":"badge"}]}},"base:editorial_cover_v1":{"summary":{"final_score":0.7485,"instruction_score":0.4837,"steps_taken":9,"total_reward":1.638,"wall_time_sec":10.0},"trajectory":[{"step":1,"action":"promote","reward":0.1225,"score":0.7711,"policy":"local_base"},{"step":2,"action":"resize","reward":0.1803,"score":0.7914,"policy":"local_base"},{"step":3,"action":"distribute","reward":0.1242,"score":0.7956,"policy":"local_base"},{"step":4,"action":"reflow_group","reward":0.2631,"score":0.7346,"policy":"local_base"},{"step":5,"action":"promote","reward":0.2543,"score":0.7517,"policy":"local_base"},{"step":6,"action":"distribute","reward":0.22,"score":0.7293,"policy":"local_base"},{"step":7,"action":"reflow_group","reward":0.1267,"score":0.746,"policy":"local_base"},{"step":8,"action":"promote","reward":0.22,"score":0.7296,"policy":"local_base"},{"step":9,"action":"resize","reward":0.1272,"score":0.7485,"policy":"local_base"}],"final_state":{"elements":[{"id":"masthead","bbox":[0.1124,0.0693,0.56,0.1],"role":"title"},{"id":"hero_image","bbox":[0.1121,0.1963,0.73,0.41],"role":"image"},{"id":"headline_1","bbox":[0.0604,0.3307,0.64,0.14],"role":"title"},{"id":"headline_2","bbox":[0.0804,0.6318,0.46,0.08],"role":"subtitle"},{"id":"headline_3","bbox":[0.0804,0.863,0.4,0.06],"role":"subtitle"},{"id":"teaser","bbox":[0.7347,0.6902,0.16,0.12],"role":"badge"},{"id":"barcode","bbox":[0.7721,0.88,0.12,0.08],"role":"caption"},{"id":"logo","bbox":[0.1043,0.871,0.12,0.08],"role":"logo"}]}},"base:dense_flyer_v1":{"summary":{"final_score":0.5918,"instruction_score":0.6159,"steps_taken":10,"total_reward":1.876,"wall_time_sec":15.4},"trajectory":[{"step":1,"action":"reflow_group","reward":0.1375,"score":0.5617,"policy":"local_base"},{"step":2,"action":"promote","reward":0.1774,"score":0.5715,"policy":"local_base"},{"step":3,"action":"align","reward":0.22,"score":0.56,"policy":"local_base"},{"step":4,"action":"resize","reward":0.1768,"score":0.5672,"policy":"local_base"},{"step":5,"action":"resize","reward":0.2517,"score":0.5742,"policy":"local_base"},{"step":6,"action":"align","reward":0.22,"score":0.5627,"policy":"local_base"},{"step":7,"action":"reflow_group","reward":0.2529,"score":0.5742,"policy":"local_base"},{"step":8,"action":"resize","reward":0.1785,"score":0.6021,"policy":"local_base"},{"step":9,"action":"resize","reward":0.1682,"score":0.6039,"policy":"local_base"},{"step":10,"action":"align","reward":0.0925,"score":0.5918,"policy":"local_base"}],"final_state":{"elements":[{"id":"title","bbox":[0.071,0.0783,0.6,0.12],"role":"title"},{"id":"image_left","bbox":[0.0975,0.2323,0.264,0.22],"role":"image"},{"id":"image_right","bbox":[0.4204,0.257,0.264,0.22],"role":"image"},{"id":"price_badge","bbox":[0.7491,0.2337,0.16,0.12],"role":"badge"},{"id":"cta","bbox":[0.6593,0.4027,0.2,0.1],"role":"cta"},{"id":"details","bbox":[0.1731,0.4901,0.52,0.24],"role":"body"},{"id":"caption_1","bbox":[0.093,0.7082,0.22,0.1],"role":"caption"},{"id":"caption_2","bbox":[0.3838,0.7082,0.22,0.1],"role":"caption"},{"id":"sponsor_strip","bbox":[0.1131,0.89,0.78,0.07],"role":"caption"}]}},"sft:poster_basic_v1":{"summary":{"final_score":0.7709,"instruction_score":0.5176,"steps_taken":7,"total_reward":1.476,"wall_time_sec":9.9},"trajectory":[{"step":1,"action":"reflow_group","reward":0.1675,"score":0.7036,"policy":"finetuned_sft"},{"step":2,"action":"align","reward":0.2536,"score":0.718,"policy":"finetuned_sft"},{"step":3,"action":"anchor_to_region","reward":0.1984,"score":0.7481,"policy":"finetuned_sft"},{"step":4,"action":"promote","reward":0.25,"score":0.7105,"policy":"finetuned_sft"},{"step":5,"action":"align","reward":0.254,"score":0.7264,"policy":"finetuned_sft"},{"step":6,"action":"move","reward":0.2108,"score":0.7094,"policy":"finetuned_sft"},{"step":7,"action":"resize","reward":0.1413,"score":0.7709,"policy":"finetuned_sft"}],"final_state":{"elements":[{"id":"title","bbox":[0.0938,0.0803,0.54,0.14],"role":"title"},{"id":"subtitle","bbox":[0.0938,0.2304,0.44,0.08],"role":"subtitle"},{"id":"hero_image","bbox":[0.2205,0.3212,0.596,0.3725],"role":"image"},{"id":"cta","bbox":[0.0764,0.7521,0.3,0.1],"role":"cta"},{"id":"logo","bbox":[0.7244,0.0528,0.14,0.14],"role":"logo"},{"id":"badge","bbox":[0.6963,0.6902,0.2,0.14],"role":"badge"}]}},"sft:editorial_cover_v1":{"summary":{"final_score":0.7491,"instruction_score":0.4724,"steps_taken":9,"total_reward":1.999,"wall_time_sec":13.5},"trajectory":[{"step":1,"action":"anchor_to_region","reward":0.1798,"score":0.796,"policy":"finetuned_sft"},{"step":2,"action":"anchor_to_region","reward":0.22,"score":0.7801,"policy":"finetuned_sft"},{"step":3,"action":"align","reward":0.2527,"score":0.7908,"policy":"finetuned_sft"},{"step":4,"action":"distribute","reward":0.25,"score":0.7559,"policy":"finetuned_sft"},{"step":5,"action":"resize","reward":0.2593,"score":0.7931,"policy":"finetuned_sft"},{"step":6,"action":"promote","reward":0.2506,"score":0.7953,"policy":"finetuned_sft"},{"step":7,"action":"move","reward":0.21,"score":0.7559,"policy":"finetuned_sft"},{"step":8,"action":"align","reward":0.2538,"score":0.7705,"policy":"finetuned_sft"},{"step":9,"action":"resize","reward":0.1225,"score":0.7491,"policy":"finetuned_sft"}],"final_state":{"elements":[{"id":"masthead","bbox":[0.1004,0.0728,0.56,0.1],"role":"title"},{"id":"hero_image","bbox":[0.1221,0.1863,0.73,0.41],"role":"image"},{"id":"headline_1","bbox":[0.1004,0.4029,0.58,0.12],"role":"title"},{"id":"headline_2","bbox":[0.1004,0.7529,0.46,0.08],"role":"subtitle"},{"id":"headline_3","bbox":[0.2492,0.863,0.4,0.06],"role":"subtitle"},{"id":"teaser","bbox":[0.7347,0.6902,0.16,0.12],"role":"badge"},{"id":"barcode","bbox":[0.7721,0.88,0.12,0.08],"role":"caption"},{"id":"logo","bbox":[0.1043,0.871,0.12,0.08],"role":"logo"}]}},"sft:dense_flyer_v1":{"summary":{"final_score":0.6172,"instruction_score":0.6241,"steps_taken":10,"total_reward":2.055,"wall_time_sec":18.3},"trajectory":[{"step":1,"action":"resize","reward":0.1253,"score":0.5824,"policy":"finetuned_sft"},{"step":2,"action":"align","reward":0.22,"score":0.5689,"policy":"finetuned_sft"},{"step":3,"action":"resize","reward":0.177,"score":0.577,"policy":"finetuned_sft"},{"step":4,"action":"resize","reward":0.1887,"score":0.6132,"policy":"finetuned_sft"},{"step":5,"action":"resize","reward":0.2511,"score":0.615,"policy":"finetuned_sft"},{"step":6,"action":"align","reward":0.22,"score":0.6027,"policy":"finetuned_sft"},{"step":7,"action":"reflow_group","reward":0.2531,"score":0.615,"policy":"finetuned_sft"},{"step":8,"action":"promote","reward":0.25,"score":0.5934,"policy":"finetuned_sft"},{"step":9,"action":"align","reward":0.253,"score":0.6055,"policy":"finetuned_sft"},{"step":10,"action":"move","reward":0.117,"score":0.6172,"policy":"finetuned_sft"}],"final_state":{"elements":[{"id":"title","bbox":[0.081,0.0683,0.6,0.12],"role":"title"},{"id":"image_left","bbox":[0.0975,0.2323,0.264,0.22],"role":"image"},{"id":"image_right","bbox":[0.4204,0.257,0.264,0.22],"role":"image"},{"id":"price_badge","bbox":[0.7491,0.2337,0.16,0.12],"role":"badge"},{"id":"cta","bbox":[0.6593,0.4027,0.2,0.1],"role":"cta"},{"id":"details","bbox":[0.1531,0.4851,0.56,0.24],"role":"body"},{"id":"caption_1","bbox":[0.093,0.7082,0.22,0.1],"role":"caption"},{"id":"caption_2","bbox":[0.3838,0.7082,0.22,0.1],"role":"caption"},{"id":"sponsor_strip","bbox":[0.1131,0.89,0.78,0.07],"role":"caption"}]}},"grpo:poster_basic_v1":{"summary":{"final_score":0.7294,"instruction_score":0.4981,"steps_taken":7,"total_reward":1.488,"wall_time_sec":9.9},"trajectory":[{"step":1,"action":"reflow_group","reward":0.1675,"score":0.7036,"policy":"finetuned_grpo"},{"step":2,"action":"reflow_group","reward":0.2536,"score":0.718,"policy":"finetuned_grpo"},{"step":3,"action":"align","reward":0.22,"score":0.7036,"policy":"finetuned_grpo"},{"step":4,"action":"promote","reward":0.2547,"score":0.721,"policy":"finetuned_grpo"},{"step":5,"action":"move","reward":0.2108,"score":0.6999,"policy":"finetuned_grpo"},{"step":6,"action":"align","reward":0.254,"score":0.7159,"policy":"finetuned_grpo"},{"step":7,"action":"resize","reward":0.1271,"score":0.7294,"policy":"finetuned_grpo"}],"final_state":{"elements":[{"id":"title","bbox":[0.0938,0.0803,0.54,0.14],"role":"title"},{"id":"subtitle","bbox":[0.0938,0.2304,0.44,0.08],"role":"subtitle"},{"id":"hero_image","bbox":[0.2205,0.3212,0.596,0.3725],"role":"image"},{"id":"cta","bbox":[0.0764,0.7521,0.3,0.1],"role":"cta"},{"id":"logo","bbox":[0.7191,0.1033,0.14,0.14],"role":"logo"},{"id":"badge","bbox":[0.6963,0.6902,0.2,0.14],"role":"badge"}]}},"grpo:editorial_cover_v1":{"summary":{"final_score":0.7491,"instruction_score":0.4724,"steps_taken":9,"total_reward":1.999,"wall_time_sec":10.0},"trajectory":[{"step":1,"action":"anchor_to_region","reward":0.1798,"score":0.796,"policy":"finetuned_grpo"},{"step":2,"action":"anchor_to_region","reward":0.22,"score":0.7801,"policy":"finetuned_grpo"},{"step":3,"action":"align","reward":0.2527,"score":0.7908,"policy":"finetuned_grpo"},{"step":4,"action":"distribute","reward":0.25,"score":0.7559,"policy":"finetuned_grpo"},{"step":5,"action":"resize","reward":0.2593,"score":0.7931,"policy":"finetuned_grpo"},{"step":6,"action":"promote","reward":0.2506,"score":0.7953,"policy":"finetuned_grpo"},{"step":7,"action":"move","reward":0.21,"score":0.7559,"policy":"finetuned_grpo"},{"step":8,"action":"align","reward":0.2538,"score":0.7705,"policy":"finetuned_grpo"},{"step":9,"action":"resize","reward":0.1225,"score":0.7491,"policy":"finetuned_grpo"}],"final_state":{"elements":[{"id":"masthead","bbox":[0.1004,0.0728,0.56,0.1],"role":"title"},{"id":"hero_image","bbox":[0.1221,0.1863,0.73,0.41],"role":"image"},{"id":"headline_1","bbox":[0.1004,0.4029,0.58,0.12],"role":"title"},{"id":"headline_2","bbox":[0.1004,0.7529,0.46,0.08],"role":"subtitle"},{"id":"headline_3","bbox":[0.2492,0.863,0.4,0.06],"role":"subtitle"},{"id":"teaser","bbox":[0.7347,0.6902,0.16,0.12],"role":"badge"},{"id":"barcode","bbox":[0.7721,0.88,0.12,0.08],"role":"caption"},{"id":"logo","bbox":[0.1043,0.871,0.12,0.08],"role":"logo"}]}},"grpo:dense_flyer_v1":{"summary":{"final_score":0.6204,"instruction_score":0.7181,"steps_taken":10,"total_reward":2.174,"wall_time_sec":15.8},"trajectory":[{"step":1,"action":"align","reward":0.1375,"score":0.5617,"policy":"finetuned_grpo"},{"step":2,"action":"anchor_to_region","reward":0.2952,"score":0.6324,"policy":"finetuned_grpo"},{"step":3,"action":"promote","reward":0.175,"score":0.6136,"policy":"finetuned_grpo"},{"step":4,"action":"align","reward":0.2531,"score":0.6261,"policy":"finetuned_grpo"},{"step":5,"action":"reflow_group","reward":0.22,"score":0.6136,"policy":"finetuned_grpo"},{"step":6,"action":"promote","reward":0.2518,"score":0.6207,"policy":"finetuned_grpo"},{"step":7,"action":"move","reward":0.2432,"score":0.6284,"policy":"finetuned_grpo"},{"step":8,"action":"align","reward":0.22,"score":0.6158,"policy":"finetuned_grpo"},{"step":9,"action":"promote","reward":0.2554,"score":0.635,"policy":"finetuned_grpo"},{"step":10,"action":"resize","reward":0.1225,"score":0.6204,"policy":"finetuned_grpo"}],"final_state":{"elements":[{"id":"title","bbox":[0.041,0.0483,0.68,0.14],"role":"title"},{"id":"image_left","bbox":[0.0975,0.2323,0.264,0.22],"role":"image"},{"id":"image_right","bbox":[0.4204,0.257,0.264,0.22],"role":"image"},{"id":"price_badge","bbox":[0.7491,0.2337,0.16,0.12],"role":"badge"},{"id":"cta","bbox":[0.6392,0.6892,0.2,0.1],"role":"cta"},{"id":"details","bbox":[0.1831,0.5151,0.5,0.19],"role":"body"},{"id":"caption_1","bbox":[0.093,0.7082,0.22,0.1],"role":"caption"},{"id":"caption_2","bbox":[0.3838,0.7082,0.22,0.1],"role":"caption"},{"id":"sponsor_strip","bbox":[0.1131,0.89,0.78,0.07],"role":"caption"}]}}};
 
   /* ── Tabs ── */
   var tabs = document.querySelectorAll('.tab-btn');
   var pages = document.querySelectorAll('.tab-page');
+  function switchToTab(tabName){
+    for(var j=0;j<tabs.length;j++){
+      tabs[j].classList.remove('active');
+      pages[j].classList.remove('active');
+    }
+    for(var k=0;k<tabs.length;k++){
+      if(tabs[k].getAttribute('data-tab')===tabName){
+        tabs[k].classList.add('active');
+        break;
+      }
+    }
+    var pg = document.getElementById('page-'+tabName);
+    if(pg) pg.classList.add('active');
+  }
   for(var i=0;i<tabs.length;i++){
     tabs[i].addEventListener('click', function(e){
-      var t = e.currentTarget.getAttribute('data-tab');
-      for(var j=0;j<tabs.length;j++){
-        tabs[j].classList.remove('active');
-        pages[j].classList.remove('active');
-      }
-      e.currentTarget.classList.add('active');
-      var pg = document.getElementById('page-'+t);
-      if(pg) pg.classList.add('active');
+      switchToTab(e.currentTarget.getAttribute('data-tab'));
     });
   }
 
@@ -444,7 +516,7 @@
         startPoll();
       } else if(info.ready){
         d.className='dot dot-g';
-        l.textContent='Fine-tuned '+(info.adapter_key||'').toUpperCase()+' · Qwen2.5-0.5B + LoRA ('+(info.device||'cpu')+')';
+        l.textContent='Fine-tuned '+(info.adapter_key||'').toUpperCase()+' \xb7 Qwen2.5-0.5B + LoRA ('+(info.device||'cpu')+')';
         det.textContent='Loaded in '+(info.load_seconds||'?')+'s';
         stopPoll();
       } else {
@@ -473,7 +545,6 @@
       det.textContent='Heuristic only';
       stopPoll();
     }
-    /* update llm label */
     var ll=$('llm-lbl'), ld=$('llm-desc');
     if(b==='local-lora'){
       var ak=(info.adapter_key||'SFT').toUpperCase();
@@ -565,12 +636,22 @@
       tr.innerHTML='<td>'+t.step+'</td><td>'+(t.action||'')+'</td><td class="'+rwCls(t.reward)+'">'+fmt(t.reward,3)+'</td><td>'+fmt(t.score,3)+'</td><td>'+polBadge(t.policy)+'</td>';
       b.appendChild(tr);
     }
-    $('tc').textContent=traj.length?'· '+traj.length+' step'+(traj.length===1?'':'s'):'— no steps yet';
+    $('tc').textContent=traj.length?'\xb7 '+traj.length+' step'+(traj.length===1?'':'s'):'— no steps yet';
   }
 
   /* ── Controls ── */
   function setSts(text,cls){var s=$('sts');s.innerHTML=text;s.className='sts '+(cls||'');}
   function selPol(){var r=document.querySelector('input[name="pol"]:checked');return r?r.value:'heuristic';}
+  function selMode(){var r=document.querySelector('input[name="runmode"]:checked');return r?r.value:'cached';}
+
+  /* update Run button label when mode changes */
+  var modeRadios = document.querySelectorAll('input[name="runmode"]');
+  for(var mi=0;mi<modeRadios.length;mi++){
+    modeRadios[mi].addEventListener('change', function(){
+      var m = selMode();
+      $('run').textContent = m==='cached' ? 'Show Cached Result' : 'Run Live Episode';
+    });
+  }
 
   function resetEnv(){
     setSts('<span class="spinner"></span>Resetting…','run');
@@ -578,30 +659,101 @@
       if(!r.ok) throw new Error('reset '+r.status);return r.json();
     }).then(function(d){
       drawState(d.state);renderScores({steps_taken:0,total_reward:0},d.state);renderTraj([]);$('rj').textContent='';
-      setSts('Ready: '+$('task').value+'. Click Run Episode.','');
+      setSts('Ready: '+$('task').value+'. Select mode and click Run.','');
     })['catch'](function(e){setSts('Reset error: '+e.message,'err');});
   }
 
-  function runEpisode(){
+  /* ── Elapsed timer & wait banner ── */
+  var _elapsedTimer = null;
+  var _elapsedStart = 0;
+  function showWaitBanner(){
+    _elapsedStart = Date.now();
+    $('wait-banner').className = 'wait-banner show';
+    $('wb-timer').textContent = '0s';
+    _elapsedTimer = setInterval(function(){
+      var sec = Math.round((Date.now() - _elapsedStart) / 1000);
+      $('wb-timer').textContent = sec + 's';
+    }, 1000);
+  }
+  function hideWaitBanner(){
+    $('wait-banner').className = 'wait-banner';
+    if(_elapsedTimer){ clearInterval(_elapsedTimer); _elapsedTimer = null; }
+  }
+
+  /* nav buttons in wait banner and teaser */
+  if($('wb-bench')) $('wb-bench').addEventListener('click', function(){ switchToTab('bench'); });
+  if($('wb-about')) $('wb-about').addEventListener('click', function(){ switchToTab('about'); });
+  if($('go-bench')) $('go-bench').addEventListener('click', function(){ switchToTab('bench'); });
+  if($('go-blog')) $('go-blog').addEventListener('click', function(){
+    window.open('https://huggingface.co/spaces/yashvyasop/DesignGym/blob/main/Blog.md','_blank');
+  });
+
+  /* ── Cached result lookup ── */
+  function getCacheKey(){
+    var pol = selPol();
+    var task = $('task').value;
+    if(pol === 'heuristic') return 'heuristic:' + task;
+    var adapter = $('asw').value || 'sft';
+    return adapter + ':' + task;
+  }
+
+  function showCachedResult(){
+    var key = getCacheKey();
+    var entry = CACHED[key];
+    if(!entry){
+      setSts('No cached result for ' + key + '. Try Run Live instead.','err');
+      return;
+    }
+    var s = entry.summary;
+    var traj = entry.trajectory;
+    var fs = entry.final_state;
+    renderScores(s, null);
+    renderTraj(traj);
+    if(fs) drawState(fs);
+    $('rj').textContent = JSON.stringify(s, null, 2);
+    var src = '<span class="src-badge src-cached">CACHED</span> Pre-computed on MPS (M1) \xb7 seed=0 \xb7 deterministic \xb7 ';
+    src += s.steps_taken + ' steps \xb7 score ' + fmt(s.final_score);
+    if(s.wall_time_sec > 0) src += ' \xb7 originally ran in ' + s.wall_time_sec + 's';
+    setSts(src, 'ok');
+  }
+
+  /* ── Live run ── */
+  function runLiveEpisode(){
     var pol=selPol();
     var polName=pol==='heuristic'?'Heuristic':((backendInfo.adapter_key||'SFT').toUpperCase()+' LoRA');
-    setSts('<span class="spinner"></span>Running episode with '+polName+'… this takes 5–20s','run');
+    var isLLM = pol !== 'heuristic';
+    var timeHint = isLLM ? '~1–1.5 min on CPU' : '~1s';
+    setSts('<span class="spinner"></span>Running '+polName+' live… ('+timeHint+')','run');
     $('run').disabled=true;$('rst').disabled=true;
+    if(isLLM) showWaitBanner();
     fetch('/demo/run_episode',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({policy:pol,task_id:$('task').value,seed:0})}).then(function(r){
       if(!r.ok) return r.text().then(function(t){throw new Error('HTTP '+r.status+' '+t.substring(0,200));});
       return r.json();
     }).then(function(d){
       if(d.error) throw new Error(d.error);
+      hideWaitBanner();
+      switchToTab('demo');
       drawState(d.final_state);
       renderScores(d.summary,d.final_state);
       renderTraj(d.trajectory||[]);
       $('rj').textContent=JSON.stringify(d.summary,null,2);
-      setSts('Done in '+(d.summary.wall_time_sec||'?')+'s — '+(d.summary.steps_taken||0)+' steps · score '+fmt(d.summary.final_score),'ok');
-    })['catch'](function(e){setSts('Error: '+e.message,'err');})
+      var src = '<span class="src-badge src-live">LIVE</span> ';
+      setSts(src+'Done in '+(d.summary.wall_time_sec||'?')+'s — '+(d.summary.steps_taken||0)+' steps \xb7 score '+fmt(d.summary.final_score),'ok');
+    })['catch'](function(e){hideWaitBanner();setSts('Error: '+e.message,'err');})
     ['finally'](function(){$('run').disabled=false;$('rst').disabled=false;});
   }
 
-  $('run').addEventListener('click',runEpisode);
+  /* ── Main run handler ── */
+  function handleRun(){
+    var mode = selMode();
+    if(mode === 'cached'){
+      showCachedResult();
+    } else {
+      runLiveEpisode();
+    }
+  }
+
+  $('run').addEventListener('click', handleRun);
   $('rst').addEventListener('click',resetEnv);
   $('task').addEventListener('change',resetEnv);
 

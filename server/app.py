@@ -119,26 +119,34 @@ if ASSETS_DIR.exists():
 WEB_DIR = ROOT_DIR / "web"
 
 
+def _html_response():
+    """Serve index.html with no-cache headers so Safari doesn't serve stale versions."""
+    resp = FileResponse(str(WEB_DIR / "index.html"))
+    resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+    resp.headers["Pragma"] = "no-cache"
+    return resp
+
+
 @app.get("/", include_in_schema=False)
 def home():
-    return FileResponse(str(WEB_DIR / "index.html"))
+    return _html_response()
 
 
 @app.get("/web", include_in_schema=False)
 def web_index_no_slash():
-    return FileResponse(str(WEB_DIR / "index.html"))
+    return _html_response()
 
 
 @app.get("/web/", include_in_schema=False)
 def web_index():
-    return FileResponse(str(WEB_DIR / "index.html"))
+    return _html_response()
 
 
 @app.get("/web/{path:path}", include_in_schema=False)
 def web_static(path: str):
     file_path = WEB_DIR / path
     if not file_path.exists() or not file_path.is_file():
-        return FileResponse(str(WEB_DIR / "index.html"))
+        return _html_response()
     return FileResponse(str(file_path))
 
 
